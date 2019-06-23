@@ -5,12 +5,18 @@ clc
 
 polygon = load('polygon.txt');
 
-polygonX = polygon(:,1);
-polygonY = polygon(:,2);
+% Check if the polygon is closed
+[rowCount, columnCount] = size(polygon);
 
-[circleX, circleY, circleR] = findMaxCircle(polygon)
+firstPoint = polygon(1, :);
+lastPoint = polygon(rowCount, :);
 
+if ~isequal(firstPoint, lastPoint)
+    polygon(rowCount + 1, :) = firstPoint;
+end
+
+[circleX, circleY, circleR] = findMaxCircle(polygon);
 
 figure(1)
-plot(polygonX, polygonY, 'o');
+plot(polygon(:,1), polygon(:,2));
 plotCircle(circleX, circleY, circleR);

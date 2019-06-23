@@ -1,57 +1,79 @@
 function [circleX, circleY, circleR] = findMaxCircle(polygon)
 
-polygon = load('polygon.txt');
+[rowCount, columnCount] = size(polygon);
 
-[rowCount, ] = size(polygon);
 indexConstrain = 1;
 
 for index = 1:rowCount - 1
-    % Coordinates of starting point
+    % Coordinates of start point
     startX = polygon(index, 1);
     startY = polygon(index, 2);
     
-    % Coordinates of ending point
+    % Coordinates of end point
     endX = polygon(index + 1, 1);
     endY = polygon(index + 1, 2);
     
     % Calculate the line equation
-    % TODO: Handle Vertical lines
-    coefficients = polyfit([startX, endX], [startY, endY], 1);
-    slope = coefficients(1);
-    yIntercept = coefficients(2);
+    slope = (endY - startY) / (endX - startX);
+    yIntercept = startY - slope * startX;
     
-    % Function should be:
-    % (mulfactor * (y - jM*x) - R) * (-1) <= mulfactor * jN
     mulFactor = 1 / sqrt(slope^2 + 1);
     
-    % Add an additional constrain with the same function but negated mulFactor
-    % Constrain for bottom edges:
     if startX < endX
         disp("Top edge:")
-        mulFactor = mulFactor * (-1);
+        
     elseif startX > endX
        disp("Bottom edge:")
+       mulFactor = mulFactor * (-1);
     else
         disp("Vertical edge")
+        fprintf("y = %d * x + %d\n", slope, yIntercept);
+        continue
     end
     
     % Show the linear equation of the line for which the constrain is created
     fprintf("y = %d * x + %d\n", slope, yIntercept);
     
-    % Constrain for bottom edges:
-    constrains(indexConstrain, 1) = slope * mulFactor;
-    constrains(indexConstrain, 2) = mulFactor * (-1);
-    constrains(indexConstrain, 3) = 1;
-    constrainsMax(indexConstrain) = yIntercept * mulFactor;
+    % Constrain for edge:
+    A(indexConstrain, 1) = slope * mulFactor;
+    A(indexConstrain, 2) = mulFactor * (-1);
+    A(indexConstrain, 3) = 1;
+    b(indexConstrain) = yIntercept * mulFactor;
     indexConstrain = indexConstrain + 1;
 end
 
-f = [0, 0, -1];
-result = linprog(f,constrains,constrainsMax);
+minX = min(polygon(:,1));
+maxX = max(polygon(:,1));
+minY = min(polygon(:,2));
+maxY = max(polygon(:,2));
+minR = 0;
+maxR = max(maxX - minX, maxY - minY) / 2;
 
-result = abs(result);
-circleX = result(1);
-circleY = result(2);
-circleR = result(3);
+% Constrain for possible vertical edge:
+% TODO: Find correct constrains
+A(indexConstrain, 1) = 1;
+A(indexConstrain, 2) = 0;
+A(indexConstrain, 3) = 1;
+b(indexConstrain) = maxX;
+indexConstrain = indexConstrain + 1;
+A(indexConstrain, 1) = 1;
+A(indexConstrain, 2) = 0;
+A(indexConstrain, 3) = 1;
+b(indexConstrain) = minX;
+indexConstrain = indexConstrain + 1;
+
+f = [0, 0, -1];
+Aeq = [];
+beq = [];
+lb = [];
+ub = [];
+
+result = linprog(f,A,b,Aeq,beq,lb,ub);
+
+circleX = result(1) * (-1);
+circleY = result(2) * (-1);
+circleR = result(3) * (-1);
+
+fprintf("(x - %d)^2 + (y - %d)^2 = %d^2", circleX, circleY, circleR)
 
 end
