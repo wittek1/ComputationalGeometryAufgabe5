@@ -1,8 +1,30 @@
 function [circleX, circleY, circleR] = findMaxCircle(polygon)
 
+minX = min(polygon(:,1));
+maxX = max(polygon(:,1));
+minY = min(polygon(:,2));
+maxY = max(polygon(:,2));
+maxR = max(maxX - minX, maxY - minY) / 2;
+minR = maxR * (-1);
+
+
+% x = optimvar('x', 'LowerBound', minX, 'UpperBound', maxX);
+% y = optimvar('y', 'LowerBound', minY, 'UpperBound', maxY);
+% r = optimvar('r', 'LowerBound', minR, 'UpperBound', maxR);
+
+% x = optimvar('x', 'LowerBound', -Inf, 'UpperBound', Inf);
+% y = optimvar('y', 'LowerBound', -Inf, 'UpperBound', Inf);
+% r = optimvar('r', 'LowerBound', -Inf, 'UpperBound', Inf);
+
+x = optimvar('x', 'LowerBound', -500);
+y = optimvar('y', 'LowerBound', -420);
+r = optimvar('r', 'LowerBound', 0);
+
+prob = optimproblem('Objective', r, 'ObjectiveSense', 'max');
+
 [rowCount, columnCount] = size(polygon);
 
-indexConstrain = 1;
+constraintIndex = 1;
 
 for index = 1:rowCount - 1
     % Coordinates of start point
@@ -19,60 +41,38 @@ for index = 1:rowCount - 1
     
     mulFactor = 1 / sqrt(slope^2 + 1);
     
-    if startX < endX
-        disp("Top edge:")
-        
-    elseif startX > endX
-       disp("Bottom edge:")
-       mulFactor = mulFactor * (-1);
+    if startX ~= endX
+        if startX > endX
+            disp("Top edge:")
+            mulFactor = mulFactor * (-1);
+        else
+            disp("Bottom edge:")
+        end
+
+        prob.Constraints.(strcat('c', num2str(constraintIndex))) = mulFactor * (-y + slope * x + yIntercept) >= r;
+
     else
-        disp("Vertical edge")
-        fprintf("y = %d * x + %d\n", slope, yIntercept);
-        continue
+        disp("Vertical edge:")
+        if startY < endY
+            prob.Constraints.(strcat('c', num2str(constraintIndex))) = startX + r <= x;
+        elseif startY > endY
+            prob.Constraints.(strcat('c', num2str(constraintIndex))) = startX - r >= x;
+        else
+            error('Not a line!')
+        end
     end
     
-    % Show the linear equation of the line for which the constrain is created
     fprintf("y = %d * x + %d\n", slope, yIntercept);
-    
-    % Constrain for edge:
-    A(indexConstrain, 1) = slope * mulFactor;
-    A(indexConstrain, 2) = mulFactor * (-1);
-    A(indexConstrain, 3) = 1;
-    b(indexConstrain) = yIntercept * mulFactor;
-    indexConstrain = indexConstrain + 1;
+    constraintIndex = constraintIndex + 1;
 end
 
-minX = min(polygon(:,1));
-maxX = max(polygon(:,1));
-minY = min(polygon(:,2));
-maxY = max(polygon(:,2));
-minR = 0;
-maxR = max(maxX - minX, maxY - minY) / 2;
+problem = prob2struct(prob);
 
-% Constrain for possible vertical edge:
-% TODO: Find correct constrains
-A(indexConstrain, 1) = 1;
-A(indexConstrain, 2) = 0;
-A(indexConstrain, 3) = 1;
-b(indexConstrain) = maxX;
-indexConstrain = indexConstrain + 1;
-A(indexConstrain, 1) = 1;
-A(indexConstrain, 2) = 0;
-A(indexConstrain, 3) = 1;
-b(indexConstrain) = minX;
-indexConstrain = indexConstrain + 1;
+[sol, fval, exitflag, output] = linprog(problem);
 
-f = [0, 0, -1];
-Aeq = [];
-beq = [];
-lb = [];
-ub = [];
-
-result = linprog(f,A,b,Aeq,beq,lb,ub);
-
-circleX = result(1) * (-1);
-circleY = result(2) * (-1);
-circleR = result(3) * (-1);
+circleX = sol(2);
+circleY = sol(3);
+circleR = sol(1);
 
 fprintf("(x - %d)^2 + (y - %d)^2 = %d^2", circleX, circleY, circleR)
 
