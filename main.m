@@ -31,9 +31,11 @@ end
 
 if sign(sum) == 1
     disp('polygon in ccw')
-    polygon = flipud(polygon);
+    
 elseif sign(sum) == -1
     disp('polygon in cw')
+    disp('now ccw')
+    polygon = flipud(polygon);
 else
     error('Not a polygon!')
 end
